@@ -1,5 +1,8 @@
 # Proṕositos de prueba del proyecto
 venv/
+**/config/
+**/credentials/
+.env
 
 #ToDos
 ToDos.md
