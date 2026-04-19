@@ -4,19 +4,21 @@
 # Setup y prueba local del proyecto bq-sync
 #
 # Uso:
-  ./gci-companies/gci-base/bq-sync-base/bootstrap.sh \
-    --db-name db_gci_acme \
-    --pg-user postgres \
-    --project-root ~/Documents/GoogleCloudProjects \
-    --compose-file docker-compose.yml \
-    --init-file init.sql \
-    --config-file config_example.py
+#   ./gci-companies/gci-base/bq-sync-base/bootstrap.sh \
+#     --db-name db_gci_acme \
+#     --pg-user postgres \
+#     --pg-port 5433 \
+#     --project-root ~/Documents/GoogleCloudProjects \
+#     --compose-file docker-compose.yml \
+#     --init-file init.sql \
+#     --config-file config_example.py
 # ========================================
 set -euo pipefail
 
 # ── Argumentos ───────────────────────────────────────────────
 DB_NAME=""
 PG_USER=""
+PG_PORT_ARG=""
 PROJECT_ROOT=""
 COMPOSE_FILE_ARG=""
 INIT_FILE_ARG=""
@@ -27,6 +29,7 @@ usage() {
     echo ""
     echo "  --db-name       Nombre de la base de datos a crear"
     echo "  --pg-user       Usuario de PostgreSQL"
+    echo "  --pg-port       Puerto de PostgreSQL"
     echo "  --project-root  Ruta raíz del proyecto"
     echo "  --compose-file  Nombre del compose file (default: docker-compose.yml)"
     echo "  --init-file      Nombre del script de creación sql (default: init.sql)"
@@ -38,10 +41,11 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --db-name)      DB_NAME="$2";      shift 2 ;;
         --pg-user)      PG_USER="$2";      shift 2 ;;
+        --pg-port)      PG_PORT_ARG="$2";      shift 2 ;;
         --project-root) PROJECT_ROOT="$2"; shift 2 ;;
         --compose-file) COMPOSE_FILE_ARG="$2"; shift 2 ;;
         --init-file)    INIT_FILE_ARG="$2"; shift 2 ;;
-        --config-file)    CONFIG_FOLDER_ARG="$2"; shift 2 ;;
+        --config-file)  CONFIG_FOLDER_ARG="$2"; shift 2 ;;
 
         *) echo "Argumento desconocido: $1"; usage ;;
     esac
@@ -52,6 +56,7 @@ done
 [ -z "$PROJECT_ROOT" ] && { echo "✗ --project-root es requerido"; usage; }
 
 # ── Variables derivadas ───────────────────────────────────────
+PG_PORT="${PG_PORT_ARG:-5433}"
 PR_PATH="$PROJECT_ROOT"
 COMPOSE_FILE="${PR_PATH}/${COMPOSE_FILE_ARG:-docker-compose.yml}"
 INIT_SQL="${PR_PATH}/templates/gci/${INIT_FILE_ARG:-init.sql}"
@@ -88,7 +93,7 @@ ok "Dependencias instaladas"
 
 # ── Postgres ─────────────────────────────────────────────────
 log "Levantando postgres-gci..."
-docker compose -f "$COMPOSE_FILE" up -d postgres-gci
+POSTGRES_GCI_PORT=$PG_PORT docker compose -f "$COMPOSE_FILE" up -d postgres-gci
 
 log "Esperando a que Postgres esté listo..."
 until docker exec postgres-gci pg_isready -U "$PG_USER" >/dev/null 2>&1; do
