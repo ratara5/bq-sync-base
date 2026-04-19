@@ -5,12 +5,14 @@ EN MÁQUINA LOCAL: CONSTRUIR Y SUBIR IMAGEN
 
 ```bash
 export PR_PATH=~/Documents/GoogleCloudProjects
-$PR_PATH/gci-companies/gci-base/bq-sync-base/bootstrap.sh \
+cd "$PR_PATH/gci-companies/gci-base/bq-sync-base"
+./bootstrap.sh \
     --db-name db_gci_acme \
     --pg-user postgres \
-    --project-root ~/Documents/GoogleCloudProjects \
+    --project-root $PR_PATH \
     --compose-file docker-compose.yml \
-    --init-file init.sql
+    --init-file init.sql \
+    --config-file config_example.py
 ```  
 
 # CONTRUIR Y SUBIR LA IMAGEN A PARTIR DEL PROYECTO  

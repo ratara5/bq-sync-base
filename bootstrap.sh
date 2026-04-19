@@ -4,12 +4,13 @@
 # Setup y prueba local del proyecto bq-sync
 #
 # Uso:
-#   ./gci-companies/gci-base/bq-sync-base/bootstrap.sh \
-#     --db-name db_gci_acme \
-#     --pg-user postgres \
-#     --project-root ~/Documents/GoogleCloudProjects \
-#     --compose-file(optional) docker-compose.yml \
-#     --init-file(optional) init.sql
+  ./gci-companies/gci-base/bq-sync-base/bootstrap.sh \
+    --db-name db_gci_acme \
+    --pg-user postgres \
+    --project-root ~/Documents/GoogleCloudProjects \
+    --compose-file docker-compose.yml \
+    --init-file init.sql \
+    --config-file config_example.py
 # ========================================
 set -euo pipefail
 
@@ -19,6 +20,7 @@ PG_USER=""
 PROJECT_ROOT=""
 COMPOSE_FILE_ARG=""
 INIT_FILE_ARG=""
+CONFIG_FILE_ARG=""
 
 usage() {
     echo "Uso: ./bootstrap.sh --db-name <nombre> --pg-user <usuario> --project-root <ruta> --compose-file <archivo>"
@@ -27,7 +29,8 @@ usage() {
     echo "  --pg-user       Usuario de PostgreSQL"
     echo "  --project-root  Ruta raíz del proyecto"
     echo "  --compose-file  Nombre del compose file (default: docker-compose.yml)"
-    echo "  --init-file      Nombre del script de creación sql"
+    echo "  --init-file      Nombre del script de creación sql (default: init.sql)"
+    echo "  --config-file      Nombre del archivo de configuración python (default config_example.py)"
     exit 1
 }
 
@@ -38,6 +41,8 @@ while [[ $# -gt 0 ]]; do
         --project-root) PROJECT_ROOT="$2"; shift 2 ;;
         --compose-file) COMPOSE_FILE_ARG="$2"; shift 2 ;;
         --init-file)    INIT_FILE_ARG="$2"; shift 2 ;;
+        --config-file)    CONFIG_FOLDER_ARG="$2"; shift 2 ;;
+
         *) echo "Argumento desconocido: $1"; usage ;;
     esac
 done
@@ -50,6 +55,7 @@ done
 PR_PATH="$PROJECT_ROOT"
 COMPOSE_FILE="${PR_PATH}/${COMPOSE_FILE_ARG:-docker-compose.yml}"
 INIT_SQL="${PR_PATH}/templates/gci/${INIT_FILE_ARG:-init.sql}"
+CONFIG_FILE="${PR_PATH}/templates/gci/bq-sync/config/${CONFIG_FILE_ARG:-config_example.py}"
 BASE_PATH="$PR_PATH/gci-companies/gci-base/bq-sync-base"
 
 # ── Helpers ──────────────────────────────────────────────────
@@ -107,6 +113,17 @@ fi
 log "Ejecutando init.sql..."
 docker exec -i postgres-gci psql -U "$PG_USER" -d "$DB_NAME" < "$INIT_SQL"
 ok "init.sql ejecutado"
+
+# ── Carga de configuración ───────────────────────────────────
+log "Cargando configuración..."
+CONFIG_DIR="$BASE_PATH/app/config"
+mkdir -p "$CONFIG_DIR"
+cp "$CONFIG_FILE" "$CONFIG_DIR/config.py"
+ok "Configuración copiada → $CONFIG_DIR/config.py"
+
+# ── Carga de credenciales ───────────────────────────────────
+log "Carga manual de credenciales es requerida"
+CRED_DIR="$BASE_PATH/app/credentials"
 
 # ── Fin ───────────────────────────────────────────────────────
 echo -e "\n\033[1;32m✓ Bootstrap completado\033[0m"
