@@ -6,8 +6,8 @@
 # Uso:
 #   ./gci-companies/gci-base/bq-sync-base/bootstrap.sh \
 #     --db-name db_gci_acme \
-#     --pg-user postgres \
-#     --pg-port 5433 \
+#     --db-user postgres \
+#     --db-port 5433 \
 #     --project-root ~/Documents/GoogleCloudProjects \
 #     --compose-file docker-compose.yml \
 #     --init-file init.sql \
@@ -16,9 +16,10 @@
 set -euo pipefail
 
 # ── Argumentos ───────────────────────────────────────────────
+DB_HOST_ARG=""
 DB_NAME=""
-PG_USER=""
-PG_PORT_ARG=""
+DB_USER_ARG=""
+DB_PORT_ARG=""
 PROJECT_ROOT=""
 COMPOSE_FILE_ARG=""
 INIT_FILE_ARG=""
@@ -27,9 +28,10 @@ CONFIG_FILE_ARG=""
 usage() {
     echo "Uso: ./bootstrap.sh --db-name <nombre> --pg-user <usuario> --project-root <ruta> --compose-file <archivo>"
     echo ""
+    echo "  --db-host       Nombre del host o servicio postgres"
     echo "  --db-name       Nombre de la base de datos a crear"
-    echo "  --pg-user       Usuario de PostgreSQL"
-    echo "  --pg-port       Puerto de PostgreSQL"
+    echo "  --db-user       Usuario de PostgreSQL"
+    echo "  --db-port       Puerto de PostgreSQL"
     echo "  --project-root  Ruta raíz del proyecto"
     echo "  --compose-file  Nombre del compose file (default: docker-compose.yml)"
     echo "  --init-file      Nombre del script de creación sql (default: init.sql)"
@@ -39,9 +41,10 @@ usage() {
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --db-host)      DB_HOST_ARG="$2";      shift 2 ;;
+        --db-port)      DB_PORT_ARG="$2";      shift 2 ;;
+        --db-user)      DB_USER_ARG="$2";      shift 2 ;;
         --db-name)      DB_NAME="$2";      shift 2 ;;
-        --pg-user)      PG_USER="$2";      shift 2 ;;
-        --pg-port)      PG_PORT_ARG="$2";      shift 2 ;;
         --project-root) PROJECT_ROOT="$2"; shift 2 ;;
         --compose-file) COMPOSE_FILE_ARG="$2"; shift 2 ;;
         --init-file)    INIT_FILE_ARG="$2"; shift 2 ;;
@@ -56,7 +59,9 @@ done
 [ -z "$PROJECT_ROOT" ] && { echo "✗ --project-root es requerido"; usage; }
 
 # ── Variables derivadas ───────────────────────────────────────
-PG_PORT="${PG_PORT_ARG:-5433}"
+DB_HOST="${DB_HOST_ARG:-postgres-gci}"
+DB_PORT="${PG_PORT_ARG:-5433}"
+DB_USER="${PG_USER_ARG:-postgres}"
 PR_PATH="$PROJECT_ROOT"
 COMPOSE_FILE="${PR_PATH}/${COMPOSE_FILE_ARG:-docker-compose.yml}"
 INIT_SQL="${PR_PATH}/templates/gci/${INIT_FILE_ARG:-init.sql}"
@@ -93,10 +98,10 @@ ok "Dependencias instaladas"
 
 # ── Postgres ─────────────────────────────────────────────────
 log "Levantando postgres-gci..."
-POSTGRES_GCI_PORT=$PG_PORT docker compose -f "$COMPOSE_FILE" up -d postgres-gci
+POSTGRES_GCI_PORT=$DB_PORT docker compose -f "$COMPOSE_FILE" up -d postgres-gci
 
 log "Esperando a que Postgres esté listo..."
-until docker exec postgres-gci pg_isready -U "$PG_USER" >/dev/null 2>&1; do
+until docker exec postgres-gci pg_isready -U "$DB_USER" >/dev/null 2>&1; do
     echo "  esperando..."
     sleep 2
 done
@@ -104,20 +109,28 @@ ok "Postgres listo"
 
 # ── Base de datos ─────────────────────────────────────────────
 log "Creando base de datos '$DB_NAME'..."
-DB_EXISTS=$(docker exec postgres-gci psql -U "$PG_USER" -tAc \
+DB_EXISTS=$(docker exec postgres-gci psql -U "$DB_USER" -tAc \
     "SELECT 1 FROM pg_database WHERE datname='$DB_NAME'")
 
 if [ "$DB_EXISTS" = "1" ]; then
     ok "Base de datos '$DB_NAME' ya existe"
 else
-    docker exec postgres-gci psql -U "$PG_USER" -c "CREATE DATABASE $DB_NAME"
+    docker exec postgres-gci psql -U "$DB_USER" -c "CREATE DATABASE $DB_NAME"
     ok "Base de datos '$DB_NAME' creada"
 fi
 
 # ── Init SQL ─────────────────────────────────────────────────
 log "Ejecutando init.sql..."
-docker exec -i postgres-gci psql -U "$PG_USER" -d "$DB_NAME" < "$INIT_SQL"
+docker exec -i postgres-gci psql -U "$DB_USER" -d "$DB_NAME" < "$INIT_SQL"
 ok "init.sql ejecutado"
+
+# ── Carga de datos ─────────────────────────────────────────────────
+log "Cargando datos iniciales..."
+"$BASE_PATH/seed_db.sh" \
+  --container "$DB_HOST" \
+  --pg-user "$DB_USER" \
+  --db-name "$DB_NAME" \
+  --data-folder "$BASE_PATH/data"
 
 # ── Carga de configuración ───────────────────────────────────
 log "Cargando configuración..."
@@ -133,5 +146,5 @@ CRED_DIR="$BASE_PATH/app/credentials"
 # ── Fin ───────────────────────────────────────────────────────
 echo -e "\n\033[1;32m✓ Bootstrap completado\033[0m"
 echo "  DB:           $DB_NAME"
-echo "  PG user:      $PG_USER"
+echo "  PG user:      $DB_USER"
 echo "  Project root: $PR_PATH"
