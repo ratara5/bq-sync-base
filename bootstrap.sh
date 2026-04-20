@@ -4,7 +4,7 @@
 # Setup y prueba local del proyecto bq-sync
 #
 # Uso:
-#   ./gci-companies/gci-base/bq-sync-base/bootstrap.sh \
+#   ./bootstrap.sh \
 #     --db-name db_gci_acme \
 #     --db-user postgres \
 #     --db-port 5433 \
@@ -55,13 +55,12 @@ while [[ $# -gt 0 ]]; do
 done
 
 [ -z "$DB_NAME"      ] && { echo "✗ --db-name es requerido";      usage; }
-[ -z "$PG_USER"      ] && { echo "✗ --pg-user es requerido";      usage; }
 [ -z "$PROJECT_ROOT" ] && { echo "✗ --project-root es requerido"; usage; }
 
 # ── Variables derivadas ───────────────────────────────────────
 DB_HOST="${DB_HOST_ARG:-postgres-gci}"
-DB_PORT="${PG_PORT_ARG:-5433}"
-DB_USER="${PG_USER_ARG:-postgres}"
+DB_PORT="${DB_PORT_ARG:-5433}"
+DB_USER="${DB_USER_ARG:-postgres}"
 PR_PATH="$PROJECT_ROOT"
 COMPOSE_FILE="${PR_PATH}/${COMPOSE_FILE_ARG:-docker-compose.yml}"
 INIT_SQL="${PR_PATH}/templates/gci/${INIT_FILE_ARG:-init.sql}"
@@ -127,10 +126,10 @@ ok "init.sql ejecutado"
 # ── Carga de datos ─────────────────────────────────────────────────
 log "Cargando datos iniciales..."
 "$BASE_PATH/seed_db.sh" \
-  --container "$DB_HOST" \
-  --pg-user "$DB_USER" \
+  --db-host "$DB_HOST" \
+  --db-user "$DB_USER" \
   --db-name "$DB_NAME" \
-  --data-folder "$BASE_PATH/data"
+  --data-folder "${PR_PATH}/templates/gci/data"
 
 # ── Carga de configuración ───────────────────────────────────
 log "Cargando configuración..."
@@ -146,5 +145,5 @@ CRED_DIR="$BASE_PATH/app/credentials"
 # ── Fin ───────────────────────────────────────────────────────
 echo -e "\n\033[1;32m✓ Bootstrap completado\033[0m"
 echo "  DB:           $DB_NAME"
-echo "  PG user:      $DB_USER"
+echo "  DB user:      $DB_USER"
 echo "  Project root: $PR_PATH"

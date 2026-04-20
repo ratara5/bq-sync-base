@@ -34,6 +34,11 @@ fi
 
 info "CSVs encontrados: ${#csv_files[@]}"
 
+for filepath in "${csv_files[@]}"; do
+  perl -i -pe 's/"(\$[0-9,]+(\.[0-9]+)?)"/my $n=$1; $n=~s%[\$,]%%g; $n/ge; s/, ,/,,/g;' "$filepath"
+done
+
+
 # ── 2. Verificar que la base de datos exista ─────────────────
 db_exists=$(docker exec "$DB_HOST" psql -U "$DB_USER" -tAc \
   "SELECT 1 FROM pg_database WHERE datname='$DB_NAME';")
@@ -55,8 +60,10 @@ loaded=()
 skipped=()
 
 for filepath in "${csv_files[@]}"; do
-  filename=$(basename "$filepath")          # tabla.csv
-  table="${filename%.csv}"                  # tabla
+  filename=$(basename "$filepath")
+  table="${filename%.csv}"
+
+  
   container_path="$CONTAINER_DATA_DIR/$filename"
 
   # ── 4a. Verificar que la tabla exista en el schema ─────────
@@ -82,7 +89,11 @@ for filepath in "${csv_files[@]}"; do
 
   # ── 4c. Ejecutar COPY ──────────────────────────────────────
   docker exec "$DB_HOST" psql -U "$DB_USER" -d "$DB_NAME" -c \
-    "COPY \"$table\" FROM '$container_path' CSV HEADER;"
+    "SET datestyle = 'DMY';
+    SET session_replication_role = 'replica';
+    COPY \"$table\" FROM '$container_path' WITH (FORMAT csv, HEADER true, NULL '');
+    SET session_replication_role = 'origin';
+    SET datestyle = 'ISO, MDY';"
 
   success "Cargado: $filename → $table"
   loaded+=("$table")
