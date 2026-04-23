@@ -6,3 +6,8 @@ venv/
 
 #ToDos
 ToDos.md
+
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
