@@ -254,6 +254,7 @@ def ping() -> bool:
     try:
         _get_client().query("SELECT 1").result()
         return True
-    except Exception:
+    except Exception as e:
+        logger.error(f"BQ ping error: {e}")
         return False
  
