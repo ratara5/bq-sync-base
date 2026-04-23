@@ -30,7 +30,7 @@ Strategy = str  # "upsert" | "full_refresh" | "merge_refresh"
 def _load_config() -> dict:
     """Importa config (TABLES y SYNC_GROUPS) montada via volume en tiempo de request."""
     import importlib.util, sys
-    spec = importlib.util.spec_from_file_location("config", "/app/config/config.py")
+    spec = importlib.util.spec_from_file_location("config", "./config/config.py")
     mod  = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod.TABLES, mod.SYNC_GROUPS
