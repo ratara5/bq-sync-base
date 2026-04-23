@@ -1,71 +1,49 @@
 #!/bin/bash
 # ========================================
 # bootstrap.sh
-# Setup y prueba local del proyecto bq-sync
+# Setup db para prueba local del proyecto bq-sync. Necesario pues la app hará parte de una infraestructura y postgres se levanta con docker compose
 #
 # Uso:
 #   ./bootstrap.sh \
-#     --db-name db_gci_acme \
-#     --db-user postgres \
-#     --db-port 5433 \
 #     --project-root ~/Documents/GoogleCloudProjects \
 #     --compose-file docker-compose.yml \
 #     --init-file init.sql \
-#     --config-file config_example.py
 # ========================================
 set -euo pipefail
 
 # ── Argumentos ───────────────────────────────────────────────
-DB_HOST_ARG=""
-DB_NAME=""
-DB_USER_ARG=""
-DB_PORT_ARG=""
 PROJECT_ROOT=""
 COMPOSE_FILE_ARG=""
 INIT_FILE_ARG=""
-CONFIG_FILE_ARG=""
 
 usage() {
-    echo "Uso: ./bootstrap.sh --db-name <nombre> --pg-user <usuario> --project-root <ruta> --compose-file <archivo>"
+    echo "Uso: ./bootstrap.sh"
     echo ""
-    echo "  --db-host       Nombre del host o servicio postgres"
-    echo "  --db-name       Nombre de la base de datos a crear"
-    echo "  --db-user       Usuario de PostgreSQL"
-    echo "  --db-port       Puerto de PostgreSQL"
-    echo "  --project-root  Ruta raíz del proyecto"
+    echo "  --project-root  Ruta raíz del proyecto de infraestructura (requerido)"
     echo "  --compose-file  Nombre del compose file (default: docker-compose.yml)"
-    echo "  --init-file      Nombre del script de creación sql (default: init.sql)"
-    echo "  --config-file      Nombre del archivo de configuración python (default config_example.py)"
+    echo "  --init-file     Nombre del script de creación sql (default: init.sql)"
     exit 1
 }
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --db-host)      DB_HOST_ARG="$2";      shift 2 ;;
-        --db-port)      DB_PORT_ARG="$2";      shift 2 ;;
-        --db-user)      DB_USER_ARG="$2";      shift 2 ;;
-        --db-name)      DB_NAME="$2";      shift 2 ;;
         --project-root) PROJECT_ROOT="$2"; shift 2 ;;
         --compose-file) COMPOSE_FILE_ARG="$2"; shift 2 ;;
         --init-file)    INIT_FILE_ARG="$2"; shift 2 ;;
-        --config-file)  CONFIG_FOLDER_ARG="$2"; shift 2 ;;
-
         *) echo "Argumento desconocido: $1"; usage ;;
     esac
 done
 
-[ -z "$DB_NAME"      ] && { echo "✗ --db-name es requerido";      usage; }
 [ -z "$PROJECT_ROOT" ] && { echo "✗ --project-root es requerido"; usage; }
 
 # ── Variables derivadas ───────────────────────────────────────
-DB_HOST="${DB_HOST_ARG:-postgres-gci}"
-DB_PORT="${DB_PORT_ARG:-5433}"
-DB_USER="${DB_USER_ARG:-postgres}"
-PR_PATH="$PROJECT_ROOT"
-COMPOSE_FILE="${PR_PATH}/${COMPOSE_FILE_ARG:-docker-compose.yml}"
-INIT_SQL="${PR_PATH}/templates/gci/${INIT_FILE_ARG:-init.sql}"
-CONFIG_FILE="${PR_PATH}/templates/gci/bq-sync/config/${CONFIG_FILE_ARG:-config_example.py}"
-BASE_PATH="$PR_PATH/gci-companies/gci-base/bq-sync-base"
+COMPOSE_FILE="${PROJECT_ROOT}/${COMPOSE_FILE_ARG:-docker-compose.yml}"
+INIT_SQL="${PROJECT_ROOT}/templates/gci/${INIT_FILE_ARG:-init.sql}"
+BASE_PATH="$PROJECT_ROOT/gci-companies/gci-base/bq-sync-base"
+
+# ── Variables cargadas desde env ──────────────────────────────
+source .env
+set -o allexport
 
 # ── Helpers ──────────────────────────────────────────────────
 log()  { echo -e "\n\033[1;34m▶ $*\033[0m"; }
@@ -129,21 +107,25 @@ log "Cargando datos iniciales..."
   --db-host "$DB_HOST" \
   --db-user "$DB_USER" \
   --db-name "$DB_NAME" \
-  --data-folder "${PR_PATH}/templates/gci/data"
+  --data-folder "${PROJECT_ROOT}/templates/gci/data"
 
 # ── Carga de configuración ───────────────────────────────────
-log "Cargando configuración..."
+log "Carga manual de configuración es requerida"
 CONFIG_DIR="$BASE_PATH/app/config"
-mkdir -p "$CONFIG_DIR"
-cp "$CONFIG_FILE" "$CONFIG_DIR/config.py"
-ok "Configuración copiada → $CONFIG_DIR/config.py"
 
 # ── Carga de credenciales ───────────────────────────────────
 log "Carga manual de credenciales es requerida"
 CRED_DIR="$BASE_PATH/app/credentials"
 
+
 # ── Fin ───────────────────────────────────────────────────────
 echo -e "\n\033[1;32m✓ Bootstrap completado\033[0m"
 echo "  DB:           $DB_NAME"
 echo "  DB user:      $DB_USER"
-echo "  Project root: $PR_PATH"
+echo "  Project root: $PROJECT_ROOT"
+echo "    "
+echo "  Siguientes pasos:"
+echo "    1. Cargar configuración"
+echo "    2. Cargar credenciales"
+echo "    3. Modificar .env (¡SOLO si la app se ejecuta en LOCAL!) ->  DB_HOST=localhost"
+echo "    4. Ejecutar app: cd app && python3.12 main.py"
