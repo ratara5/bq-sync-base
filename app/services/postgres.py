@@ -13,7 +13,10 @@ import psycopg2.extras
 
 from settings import settings
 from services.dates import resolve_date
-from datetime import datetime, timezone
+
+from datetime import date, datetime, time, timezone
+from decimal import Decimal
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -74,8 +77,7 @@ def fetch_table(
             cur.execute(query)
             rows = cur.fetchall()
             logger.info(f"[{table_name}] {len(rows)} filas extraídas")
-            return [{**row, "_sync_timestamp": now} for row in rows]
- 
+            return [{**_serialize_row(dict(row)), "_sync_timestamp": now} for row in rows]
  
 def get_db_schema(table_name: str) -> list[str]:
     """
@@ -103,3 +105,57 @@ def ping() -> bool:
         return True
     except Exception:
         return False
+    
+# v1 de serialización
+# def _serialize_row(row: dict) -> dict:
+#     result = {}
+#     for k, v in row.items():
+#         if isinstance(v, datetime):
+#             result[k] = v.isoformat()
+#         elif isinstance(v, date):
+#             result[k] = v.isoformat()
+#         elif isinstance(v, time):
+#             result[k] = v.isoformat()
+#         elif isinstance(v, Decimal):
+#             result[k] = float(v)
+#         else:
+#             result[k] = v
+#     return result
+
+# v2 de serialización
+# def _serialize_row(row: dict) -> dict:
+#     result = {}
+#     for k, v in row.items():
+#         match True:
+#             # Manejo de tipo fecha y/u hora
+#             case _ if isinstance(v, datetime):
+#                 result[k] = v.isoformat()
+#             case _ if isinstance(v, date):
+#                 result[k] = v.isoformat()
+#             case _ if isinstance(v, time):
+#                 result[k] = v.isoformat()
+
+#             # Manejo de tipo número
+#             case _ if isinstance(v, Decimal):
+#                 result[k] = float(v)
+
+#             # Manejo de tipo texto
+#             case _ if isinstance(v, str):
+#                 escaped = re.sub(r"([\\'\n\"])", r"\\\1", v)
+#                 result[k] = escaped
+
+#             # Manejo de otros tipos
+#             case _:
+#                 result[k] = v
+#     return result
+
+# v3 de serialización
+def serialize_value(v):
+    if isinstance(v, (datetime, date, time)):
+        return v.isoformat()
+    if isinstance(v, Decimal):
+        return float(v)
+    return v
+
+def _serialize_row(row: dict) -> dict:
+    return {k: serialize_value(v) for k, v in row.items()}
