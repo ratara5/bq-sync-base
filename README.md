@@ -1,6 +1,8 @@
 EN MÁQUINA LOCAL: CONSTRUIR Y SUBIR IMAGEN  
 (se puede incluir esto en 'create-company-gci.sh'?)  
 # PROBAR EL FUNCIONAMIENTO DEL PROYECTO (PREVIO A DOCKERIZAR)  
+
+## 1. CONSTRUIR EL AMBIENTE VIRTUAL Y LEVANTAR LA BASE DE DATOS (QUE SÍ ESTÁ DOCKERIZADA)  
 ```PROJECT_ROOT = ~/Documents/GoogleCloudProjects```
 
 ```bash
@@ -11,6 +13,29 @@ cd "$PR_PATH/gci-companies/gci-base/bq-sync-base"
     --compose-file docker-compose.yml \
     --init-file init.sql
 ```  
+
+## 2. DEPURAR LA APP  
+**a**  Asegurar que el ```${workspaceFolder}``` sea el directorio que contenga a ```app/``` en su primer nivel  
+**b**  Escribir ```.vscode/launch.json```  así:
+
+```.json
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "python",
+            "request": "launch",
+            "name": "app debug",
+            "program": "${workspaceFolder}/app/main.py",
+            "cwd": "${workspaceFolder}/app",
+            "envFile": "${workspaceFolder}/app/.env",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        }
+    ]
+}
+```
+**c**  Correr la app en modo debugg con ```Ctrl + F5```  
 
 # CONTRUIR Y SUBIR LA IMAGEN A PARTIR DEL PROYECTO  
 1. Moverse al directorio de la gci-base/gmsync-base
