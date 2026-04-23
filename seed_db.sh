@@ -35,7 +35,7 @@ fi
 info "CSVs encontrados: ${#csv_files[@]}"
 
 for filepath in "${csv_files[@]}"; do
-  perl -i -pe 's/"(\$[0-9,]+(\.[0-9]+)?)"/my $n=$1; $n=~s%[\$,]%%g; $n/ge; s/, ,/,,/g;' "$filepath"
+  perl -i -pe 's/"(\$[0-9,]+(\.[0-9]+)?)"/my $n=$1; $n=~s%[\$,]%%g; $n/ge; s/\$([0-9]+(\.[0-9]+)?)/my $n=$1; $n/ge; s/, ,/,,/g;' "$filepath"
 done
 
 
