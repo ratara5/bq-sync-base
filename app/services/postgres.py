@@ -154,7 +154,7 @@ def ping() -> bool:
 # v3 de serialización
 def serialize_value(v):
     if isinstance(v, (datetime, date, time)):
-        return v.astimezone(ZoneInfo("America/Bogota")).isoformat()
+        return v.isoformat() #.astimezone(ZoneInfo("America/Bogota")) NO VA, la query en bq debe inclui '...AT TIME ZONE ...'
     if isinstance(v, Decimal):
         return float(v)
     return v
