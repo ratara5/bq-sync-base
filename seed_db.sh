@@ -35,9 +35,9 @@ fi
 
 info "CSVs encontrados: ${#csv_files[@]}"
 
-for filepath in "${csv_files[@]}"; do
-  perl -i -pe 's/"(\$[0-9,]+(\.[0-9]+)?)"/my $n=$1; $n=~s%[\$,]%%g; $n/ge; s/\$([0-9]+(\.[0-9]+)?)/my $n=$1; $n/ge; s/, ,/,,/g; s/(?<=,)(\d+)\.0(?=,|$)/$1/g;' "$filepath"
-done
+#for filepath in "${csv_files[@]}"; do
+#  perl -i -pe 's/"(\$[0-9,]+(\.[0-9]+)?)"/my $n=$1; $n=~s%[\$,]%%g; $n/ge; s/\$([0-9]+(\.[0-9]+)?)/my $n=$1; $n/ge; s/, ,/,,/g; s/(?<=,)(\d+)\.0(?=,|$)/$1/g;' "$filepath"
+#done
 
 
 # ── 2. Verificar que la base de datos exista ─────────────────
@@ -53,7 +53,7 @@ info "Base de datos '$DB_NAME' verificada."
 
 # ── 2.1 Transformar timezone antes de copiar (si venv tiene 3.12 no es necesario python3.12 ..., basta solo python ...) ───────────────
 info "Transformando timezone a la del usuario que entrega data..."
-python3.12 "transform_timezone.py" \
+python3.12 "transform_csv.py" \
   --data-folder "$DATA_FOLDER" \
   --config "$PROJECT_ROOT/templates/gci/timezone_config.yml"
 
