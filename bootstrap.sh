@@ -107,7 +107,7 @@ log "Cargando datos iniciales..."
   --db-host "$DB_HOST" \
   --db-user "$DB_USER" \
   --db-name "$DB_NAME" \
-  --data-folder "${PROJECT_ROOT}/templates/gci/data"
+  --project-root "${PROJECT_ROOT}"
 
 # ── Carga de configuración ───────────────────────────────────
 log "Carga manual de configuración es requerida"

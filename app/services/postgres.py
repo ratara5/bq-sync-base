@@ -15,6 +15,7 @@ from settings import settings
 from services.dates import resolve_date
 
 from datetime import date, datetime, time, timezone
+from zoneinfo import ZoneInfo
 from decimal import Decimal
 import re
 
@@ -71,7 +72,8 @@ def fetch_table(
  
     logger.debug(f"[{table_name}] query: {query[:200]}")
  
-    now = datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    # now = datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    now = datetime.now().astimezone(ZoneInfo("America/Bogota")).isoformat()
     with get_connection() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(query)
@@ -152,7 +154,7 @@ def ping() -> bool:
 # v3 de serialización
 def serialize_value(v):
     if isinstance(v, (datetime, date, time)):
-        return v.isoformat()
+        return v.astimezone(ZoneInfo("America/Bogota")).isoformat()
     if isinstance(v, Decimal):
         return float(v)
     return v

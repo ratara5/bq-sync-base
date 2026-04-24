@@ -5,18 +5,19 @@ set -euo pipefail
 DB_HOST=""
 DB_USER=""
 DB_NAME=""
-DATA_FOLDER=""
+PROJECT_ROOT=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --db-host)     DB_HOST="$2";   shift 2 ;;
         --db-user)     DB_USER="$2";     shift 2 ;;
         --db-name)     DB_NAME="$2";     shift 2 ;;
-        --data-folder) DATA_FOLDER="$2"; shift 2 ;;
+        --project-root) PROJECT_ROOT="$2"; shift 2 ;;
         *) echo "Argumento desconocido: $1"; exit 1 ;;
     esac
 done
 
+DATA_FOLDER="$PROJECT_ROOT/templates/gci/data"
 CONTAINER_DATA_DIR="/tmp/csv_load" 
 
 # ── Helpers de color ─────────────────────────────────────────
@@ -35,7 +36,7 @@ fi
 info "CSVs encontrados: ${#csv_files[@]}"
 
 for filepath in "${csv_files[@]}"; do
-  perl -i -pe 's/"(\$[0-9,]+(\.[0-9]+)?)"/my $n=$1; $n=~s%[\$,]%%g; $n/ge; s/\$([0-9]+(\.[0-9]+)?)/my $n=$1; $n/ge; s/, ,/,,/g;' "$filepath"
+  perl -i -pe 's/"(\$[0-9,]+(\.[0-9]+)?)"/my $n=$1; $n=~s%[\$,]%%g; $n/ge; s/\$([0-9]+(\.[0-9]+)?)/my $n=$1; $n/ge; s/, ,/,,/g; s/(?<=,)(\d+)\.0(?=,|$)/$1/g;' "$filepath"
 done
 
 
@@ -49,6 +50,12 @@ if [ "$db_exists" != "1" ]; then
 fi
 
 info "Base de datos '$DB_NAME' verificada."
+
+# ── 2.1 Transformar timezone antes de copiar (si venv tiene 3.12 no es necesario python3.12 ..., basta solo python ...) ───────────────
+info "Transformando timezone a la del usuario que entrega data..."
+python3.12 "transform_timezone.py" \
+  --data-folder "$DATA_FOLDER" \
+  --config "$PROJECT_ROOT/templates/gci/timezone_config.yml"
 
 # ── 3. Copiar CSVs al contenedor ─────────────────────────────
 docker exec "$DB_HOST" mkdir -p "$CONTAINER_DATA_DIR"
