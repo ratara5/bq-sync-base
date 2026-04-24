@@ -37,6 +37,28 @@ cd "$PR_PATH/gci-companies/gci-base/bq-sync-base"
 ```
 **c**  Correr la app en modo debugg con ```Ctrl + F5```  
 
+## 3. CORRER LA APP  
+```bah
+export PR_PATH=~/Documents/GoogleCloudProjects
+cd "$PR_PATH/gci-companies/gci-base/bq-sync-base"
+source venv/bin/activate
+cd app
+python3.12 main.py
+```  
+
+**Invocar rutas**  
+```bash
+curl http://localhost:5555/health
+```  
+
+```bash
+curl -X POST http://localhost:5555/sync/transaccional_upsert
+```  
+
+
+
+
+
 # CONTRUIR Y SUBIR LA IMAGEN A PARTIR DEL PROYECTO  
 1. Moverse al directorio de la gci-base/gmsync-base
 ```bash
