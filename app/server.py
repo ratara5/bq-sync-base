@@ -5,8 +5,7 @@
 
 import logging
 from flask import Flask
-from routes.health import health_bp
-from routes.sync   import sync_bp
+from routes import all_blueprints
 
 
 def create_app() -> Flask:
@@ -17,7 +16,7 @@ def create_app() -> Flask:
         format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
     )
 
-    app.register_blueprint(health_bp)
-    app.register_blueprint(sync_bp)
+    for bp in all_blueprints:
+        app.register_blueprint(bp)
 
     return app
