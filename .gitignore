@@ -1,3 +1,6 @@
+# Docker
+docker-compose.yml
+
 # Proṕositos de prueba del proyecto
 venv/
 **/config/
@@ -16,3 +19,8 @@ ToDos.md
 # Configuración de IDEs
 .vscode/
 .idea/
+
+# De otros servicios
+Dockerfile.alpine
+Dockerfile.alpine.amd
+**/cronjob/

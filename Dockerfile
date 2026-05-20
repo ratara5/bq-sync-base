@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
  
-COPY . .
+COPY app/ .
 
 # EXPOSE es documentación — no abre el puerto realmente. El puerto real lo define ports: en el docker-compose.yml. No es obligatorio pero es buena práctica.
 EXPOSE 5555

@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     def pg_dsn(self) -> str:
         return (
             f"postgresql://{self.pg_user}:{self.pg_password}"
-            f"@localhost:{self.pg_port}/{self.pg_db}" #nombre del contenedor docker o localhost si se expone el puerto
+            f"@{self.pg_host}:{self.pg_port}/{self.pg_db}" #nombre del contenedor docker o localhost si se expone el puerto
         )
 
 
