@@ -68,7 +68,7 @@ def _run_upsert(table_cfg: dict, table_name: str) -> dict:
 
     if not last_sync:
         count = truncate_and_insert(table_name, rows)
-        return {"rows": count, "status": "ok", "mode": "full"}
+        return {"rows": count, "status": "ok", "mode": "full", "sync": "first"}
 
     delta = [r for r in rows if r.get("updated_at") and r["updated_at"] > last_sync]
 
@@ -139,7 +139,7 @@ def sync_group(group: str):
             result = run_fn(tables_cfg[table_name], table_name)
             summary[table_name] = {"status": "ok", **result}
         except Exception as e:
-            logger.error(f"[{group}][{table_name}] {e}")
+            log.error(f"[{group}][{table_name}] {e}")
             summary[table_name] = {"status": "error", "detail": str(e)}
 
     elapsed = (datetime.now(tz=timezone.utc) - started_at).total_seconds()
