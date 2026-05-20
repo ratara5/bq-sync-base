@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 import json
-import logging
 import time
 from typing import Any, Literal
 
@@ -14,7 +13,10 @@ from google.oauth2 import service_account
 
 from settings import settings
 
-logger = logging.getLogger(__name__)
+import logging
+import structlog
+
+log = structlog.get_logger(__name__)
 
 # Tabla de control de tablas temporales pendientes de eliminar
 _TEMP_QUEUE_TABLE = "_temp_deletion_queue"
@@ -70,7 +72,7 @@ def get_last_sync_timestamp(table_id: str) -> str | None:
         val  = rows[0].get("last_sync") if rows else None
         return str(val) if val else None
     except Exception as e:
-        logger.warning(f"[{table_id}] get_last_sync_timestamp: {e}")
+        log.warning(f"[{table_id}] get_last_sync_timestamp: {e}")
         return None
  
  
@@ -96,7 +98,7 @@ def insert_rows(table_id: str, rows: list[dict]) -> int:
     )
     job = client.load_table_from_json(rows, _absolute_reference(table_id), job_config=job_config)
     job.result()
-    logger.info(f"[{table_id}] insert_rows: {len(rows)} filas")
+    log.info(f"[{table_id}] insert_rows: {len(rows)} filas")
     return len(rows)
  
  
@@ -113,7 +115,7 @@ def update_row_in_bq(table_id: str, key: list[str], row: dict) -> None:
 def truncate_and_insert(table_id: str, rows: list[dict]) -> int:
     """Full refresh: reemplaza toda la tabla. Retorna filas insertadas."""
     if not rows:
-        logger.warning(f"[{table_id}] truncate_and_insert: sin filas, abortando")
+        log.warning(f"[{table_id}] truncate_and_insert: sin filas, abortando")
         return 0
     client     = _get_client()
     job_config = bigquery.LoadJobConfig(
@@ -122,7 +124,7 @@ def truncate_and_insert(table_id: str, rows: list[dict]) -> int:
     )
     job = client.load_table_from_json(rows, _absolute_reference(table_id), job_config=job_config)
     job.result()
-    logger.info(f"[{table_id}] truncate_and_insert: {len(rows)} filas")
+    log.info(f"[{table_id}] truncate_and_insert: {len(rows)} filas")
     return len(rows)
 
 # ── Merge ────────────────────────────────────────────────────
@@ -145,7 +147,7 @@ def merge_into_bq(
                    Si es None, DELETE aplica sobre toda la tabla.
     """
     if not rows:
-        logger.warning(f"[{table_id}] merge_into_bq: sin filas")
+        log.warning(f"[{table_id}] merge_into_bq: sin filas")
         return 0
  
     client       = _get_client()
@@ -164,7 +166,7 @@ def merge_into_bq(
     )
     job = client.load_table_from_json(rows, temp_ref, job_config=job_config)
     job.result()
-    logger.info(f"[{table_id}] temp table cargada: {temp_table}")
+    log.info(f"[{table_id}] temp table cargada: {temp_table}")
  
     # 2. Construir MERGE SQL
     on_clause     = " AND ".join(f"T.{k} = S.{k}" for k in key)
@@ -188,7 +190,7 @@ def merge_into_bq(
     """
  
     run_query(merge_sql)
-    logger.info(f"[{table_id}] merge_into_bq: {len(rows)} filas procesadas")
+    log.info(f"[{table_id}] merge_into_bq: {len(rows)} filas procesadas")
  
     # 3. Encolar temporal para eliminar en próxima ejecución
     _enqueue_temp_to_del(client, temp_table)
@@ -210,7 +212,7 @@ def upsert_rows(table_id: str, rows: list[dict], key: list[str]) -> dict:
         else:
             insert_rows(table_id, [row])
             inserted += 1
-    logger.info(f"[{table_id}] upsert: {inserted} inserts, {updated} updates")
+    log.info(f"[{table_id}] upsert: {inserted} inserts, {updated} updates")
     return {"inserted": inserted, "updated": updated}
 
 # ── Helpers internos ─────────────────────────────────────────
@@ -230,7 +232,7 @@ def _enqueue_temp_to_del(client: bigquery.Client, temp_table: str) -> None:
         row = {"temp_table": temp_table, "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ")}
         client.insert_rows_json(_absolute_reference(_TEMP_QUEUE_TABLE), [row])
     except Exception as e:
-        logger.warning(f"_enqueue_temp_to_del: {e}")
+        log.warning(f"_enqueue_temp_to_del: {e}")
  
  
 def _delete_temp_tables(client: bigquery.Client) -> None:
@@ -240,13 +242,13 @@ def _delete_temp_tables(client: bigquery.Client) -> None:
         for row in rows:
             try:
                 client.delete_table(_absolute_reference(row["temp_table"]), not_found_ok=True)
-                logger.info(f"Temp table eliminada: {row['temp_table']}")
+                log.info(f"Temp table eliminada: {row['temp_table']}")
             except Exception as e:
-                logger.warning(f"No se pudo eliminar {row['temp_table']}: {e}")
+                log.warning(f"No se pudo eliminar {row['temp_table']}: {e}")
         # Limpiar la cola
         run_query(f"TRUNCATE TABLE {_absolute_reference(_TEMP_QUEUE_TABLE)}")
     except Exception as e:
-        logger.warning(f"_delete_temp_tables: {e}")
+        log.warning(f"_delete_temp_tables: {e}")
  
  
 def ping() -> bool:
@@ -255,6 +257,6 @@ def ping() -> bool:
         _get_client().query("SELECT 1").result()
         return True
     except Exception as e:
-        logger.error(f"BQ ping error: {e}")
+        log.error(f"BQ ping error: {e}")
         return False
  

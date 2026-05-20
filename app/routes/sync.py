@@ -6,6 +6,7 @@
 from __future__ import annotations
 import importlib
 import logging
+import structlog
 from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify
@@ -20,7 +21,9 @@ from services.bigquery import (
 )
 from services.dates import resolve_date
 
-logger = logging.getLogger(__name__)
+log = structlog.get_logger(__name__)
+
+
 sync_bp = Blueprint("sync", __name__)
 
 Strategy = str  # "upsert" | "full_refresh" | "merge_refresh"
@@ -105,6 +108,7 @@ def sync_group(group: str):
 
     try:
         tables_cfg, groups_cfg = _load_config()
+        log.info("config loaded", tables=list(tables_cfg), groups=list(groups_cfg))
     except Exception as e:
         return jsonify({"error": f"config load failed: {e}"}), 500
 

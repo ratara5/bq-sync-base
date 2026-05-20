@@ -4,7 +4,6 @@
 # ========================================
 
 from __future__ import annotations
-import logging
 from contextlib import contextmanager
 from typing import Generator
 
@@ -19,7 +18,10 @@ from zoneinfo import ZoneInfo
 from decimal import Decimal
 import re
 
-logger = logging.getLogger(__name__)
+import logging
+import structlog
+
+log = structlog.get_logger(__name__)
 
 
 @contextmanager
@@ -29,7 +31,7 @@ def get_connection() -> Generator:
         conn = psycopg2.connect(settings.pg_dsn)
         yield conn
     except psycopg2.OperationalError as e:
-        logger.error(f"Postgres connection error: {e}")
+        log.error(f"Postgres connection error: {e}")
         raise
     finally:
         if conn:
@@ -70,7 +72,7 @@ def fetch_table(
     where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
     query     = f"SELECT {cols_sql} FROM {table_name} {where_sql}"
  
-    logger.debug(f"[{table_name}] query: {query[:200]}")
+    log.debug(f"[{table_name}] query: {query[:200]}")
  
     # now = datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     now = datetime.now().astimezone(ZoneInfo("America/Bogota")).isoformat()
@@ -78,7 +80,7 @@ def fetch_table(
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(query)
             rows = cur.fetchall()
-            logger.info(f"[{table_name}] {len(rows)} filas extraídas")
+            log.info(f"[{table_name}] {len(rows)} filas extraídas")
             return [{**_serialize_row(dict(row)), "_sync_timestamp": now} for row in rows]
  
 def get_db_schema(table_name: str) -> list[str]:

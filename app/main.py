@@ -6,6 +6,10 @@
 from server import create_app
 from settings import settings
 
+from logger import setup_logging
+
+setup_logging()
+
 app = create_app()
 
 if __name__ == "__main__":
